@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>شایان، صالحه؟ | یکی در میان</title>
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f6f5f1;--card:#fff;--text:#1d1d1f;--muted:#6b6b70;--a:#2f6fed;--b:#1f9d55;--bad:#d93a3a;--line:#e3e1da;color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--bg:#15161a;--card:#1f2127;--text:#f0f0f2;--muted:#9a9aa3;--a:#6c9cff;--b:#4cd38a;--bad:#ff6b6b;--line:#2e3038;color-scheme:dark}}
@@ -27,6 +28,15 @@ img{max-width:70%;border-radius:12px;margin:4px 0}
 @keyframes pulse{50%{transform:scale(1.03)}}
 .shake{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#timer{font-family:"Roboto Mono",ui-monospace,Consolas,monospace;font-size:3rem;font-weight:700;line-height:1.2;direction:ltr;font-variant-numeric:tabular-nums}
+#timer.low{color:var(--bad)}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
+#modal.hide{display:none}
+.box{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;max-width:360px;width:100%;animation:pop .2s}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.rec{font-size:3.4rem;font-weight:900;color:var(--a);line-height:1.2}
+.vote{font-size:1.4rem;font-weight:900;margin:8px 0}
+.go{font:inherit;font-weight:700;background:var(--a);color:var(--bg);border:0;border-radius:12px;padding:10px 26px;cursor:pointer;margin-top:8px}
 .reset{font:inherit;background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;margin-top:14px}
 </style>
 </head>
@@ -36,69 +46,106 @@ img{max-width:70%;border-radius:12px;margin:4px 0}
   <h1>شایان، صالحه؟</h1>
   <p class="muted">اسکرین‌شات بگیر و رکوردت رو برای بقیه بفرست 📸</p>
 
-  <div class="score" id="score">۰</div>
+  <div id="timer">15.000</div>
+  <div class="muted">ثانیه‌ی باقی‌مانده؛ با اولین ضربه شروع می‌شه</div>
   <div class="stats">
     <div><b id="streak">۰</b><span class="muted">رکورد فعلی</span></div>
-    <div><b id="mult">×۱</b><span class="muted">ضریب</span></div>
+    <div><b id="score">۰</b><span class="muted">امتیاز</span></div>
     <div><b id="best">۰</b><span class="muted">بهترین رکورد</span></div>
   </div>
 
   <div id="bubble">اول یکی از دو تا رو بزن 👇</div>
 
   <div class="row">
-    <button class="p" id="pa">شایان صالحه<small>رای اسسی شما</small></button>
-    <button class="p" id="pb">صالح نظری<small>از ملایر</small></button>
+    <button class="p" id="pa">شایان صالحه<small>اینی که منم 😄</small></button>
+    <button class="p" id="pb">صالح نظری<small>نه شایان!</small></button>
   </div>
-  <button class="reset" id="reset">شروع دوباره</button>
+  <button class="reset" id="reset">پاک کردن رکورد</button>
+</div>
+
+<div id="modal" class="hide">
+  <div class="box">
+    <div class="muted">⏱ وقت تموم شد!</div>
+    <div class="muted" id="newrec"></div>
+    <div class="muted">رکورد تو</div>
+    <div class="rec" id="rec">۰</div>
+    <div class="vote">رای من شایان صالحه 🗳️</div>
+    <div class="muted">اسکرین‌شات بگیر و بفرست 📸</div>
+    <button class="go" id="again">دوباره</button>
+  </div>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
-const KEY="shayanAltV1";
-let S={score:0,streak:0,best:0,last:null};
-try{const x=JSON.parse(localStorage.getItem(KEY));if(x)S=Object.assign(S,x)}catch(e){}
+const KEY="shayanAltV2",DUR=15;
+let best=0;
+try{best=+localStorage.getItem(KEY)||0}catch(e){}
+let streak,score,last,end,tick,running,over,roundBest;
 
 const UN=[[1e15,"کوادریلیون"],[1e12,"تریلیون"],[1e9,"میلیارد"],[1e6,"میلیون"]];
 function fmt(v){v=Math.floor(v);for(const [u,n] of UN)if(v>=u)return (Math.floor(v/u*100)/100).toLocaleString("fa")+" "+n;return v.toLocaleString("fa")}
-const mult=()=>1+Math.floor(S.streak/10);
+const mult=()=>1+Math.floor(streak/10);
 
 const SAY={
  a:["شایان، صالحه؟","«آره بابا، خودمم!»","«شایان صالحه‌م، نه صالح نظری 🙋‍♂️»"],
  b:["«نه بابا، من صالح نظریم! شایان صالحه اونه.»","«شایان اونورِ 😄»","«من صالحم؛ شایان صالحه یکی دیگه‌ست!»"]
 };
-const MILE={25:"۲۵ تا پشت هم! دیگه کسی اشتباه نمی‌گیره.",50:"۵۰! شایان و صالح رسماً جدا شدن 🎉",100:"۱۰۰! تو استاد تشخیص شایان و صالحی 🏆",250:"۲۵۰! این بازی هیچ‌وقت تموم نمی‌شه…"};
+const MILE={25:"۲۵ تا پشت هم! دیگه کسی اشتباه نمی‌گیره.",50:"۵۰! شایان و صالح رسماً جدا شدن 🎉",100:"۱۰۰! تو استاد تشخیص شایان و صالحی 🏆"};
 
 function render(){
-  $("score").textContent=fmt(S.score);
-  $("streak").textContent=fmt(S.streak);
-  $("mult").textContent="×"+mult().toLocaleString("fa");
-  $("best").textContent=fmt(S.best);
-  $("pa").classList.toggle("next",S.last==="b");
-  $("pb").classList.toggle("next",S.last==="a");
-  document.title=fmt(S.score)+" | شایان، صالحه؟";
+  $("score").textContent=fmt(score);
+  $("streak").textContent=fmt(streak);
+  $("best").textContent=fmt(Math.max(best,roundBest));
+  $("pa").classList.toggle("next",!over&&last==="b");
+  $("pb").classList.toggle("next",!over&&last==="a");
 }
 function say(t,bad){const b=$("bubble");b.textContent=t;b.style.color=bad?"var(--bad)":"var(--text)"}
+function showTime(t){const el=$("timer");el.textContent=Math.max(0,t).toFixed(3);el.classList.toggle("low",t<=5&&running)}
+
+function reset(){
+  clearInterval(tick);
+  streak=0;score=0;last=null;running=false;over=false;roundBest=0;
+  showTime(DUR);say("اول یکی از دو تا رو بزن 👇");
+  $("modal").classList.add("hide");render();
+}
+function start(){
+  running=true;end=Date.now()+DUR*1000;
+  tick=setInterval(()=>{
+    const left=(end-Date.now())/1000;
+    showTime(left);
+    if(left<=0)finish();
+  },16);
+}
+function finish(){
+  clearInterval(tick);running=false;over=true;showTime(0);
+  const isNew=roundBest>best;
+  if(isNew){best=roundBest;try{localStorage.setItem(KEY,best)}catch(e){}}
+  $("rec").textContent=fmt(roundBest);
+  $("newrec").textContent=isNew&&roundBest>0?"🎉 رکورد جدید!":"بهترین رکوردت: "+fmt(best);
+  $("modal").classList.remove("hide");render();
+}
 function tap(who){
+  if(over)return;
+  if(!running)start();
   const el=$(who==="a"?"pa":"pb");
-  if(S.last===who){ // same twice: streak breaks, game goes on
-    S.streak=0;
+  if(last===who){
+    streak=0;
     el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake");
     say(who==="a"?"شایان، صالحه؟ آره! ولی الان نوبت صالح نظریه 😅":"نه بابا! الان نوبت شایان صالحه‌ست 😅",true);
   }else{
-    S.last=who;S.streak++;
-    S.score+=mult();
-    if(S.streak>S.best)S.best=S.streak;
+    last=who;streak++;score+=mult();
+    if(streak>roundBest)roundBest=streak;
     const arr=SAY[who];say(arr[Math.floor(Math.random()*arr.length)]);
-    if(MILE[S.streak])say(MILE[S.streak]);
+    if(MILE[streak])say(MILE[streak]);
   }
-  render();save();
+  render();
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 $("pa").onclick=()=>tap("a");
 $("pb").onclick=()=>tap("b");
+$("again").onclick=reset;
 addEventListener("keydown",e=>{if(e.key==="ArrowRight")tap("a");else if(e.key==="ArrowLeft")tap("b")});
-$("reset").onclick=()=>{if(confirm("مطمئنی می‌خوای از اول شروع کنی؟")){S={score:0,streak:0,best:0,last:null};say("اول یکی از دو تا رو بزن 👇");render();save()}};
-render();
+$("reset").onclick=()=>{if(confirm("مطمئنی می‌خوای رکوردت پاک بشه؟")){best=0;try{localStorage.removeItem(KEY)}catch(e){}reset()}};
+reset();
 </script>
 </body>
 </html>
