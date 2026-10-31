@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>کدام کاندیدای انجمن علمی به شما نزدیک‌تر است؟</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--text:#1d1d1f;--muted:#6b6b70;--accent:#2f6fed;--line:#e3e1da;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#15161a;--card:#1f2127;--text:#f0f0f2;--muted:#9a9aa3;--accent:#6c9cff;--line:#2e3038;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Vazirmatn,Tahoma,sans-serif;line-height:1.9;min-height:100vh;display:flex;justify-content:center;padding:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;max-width:560px;width:100%;align-self:flex-start;margin-top:4vh}
+h1{font-size:1.35rem;margin:0 0 8px}
+p{margin:0 0 16px}
+.muted{color:var(--muted);font-size:.85rem}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-bottom:18px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.tag{font-size:.8rem;color:var(--accent);margin-bottom:4px}
+.q{font-size:1.1rem;min-height:110px}
+.btns{display:flex;gap:10px}
+button{flex:1;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.res{text-align:center}
+.name{font-size:1.8rem;font-weight:700;margin:6px 0}
+.pct{font-size:3rem;font-weight:700;color:var(--accent)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main class="card">
+  <section id="start">
+    <h1>کدام کاندیدای انجمن علمی دانشکده کامپیوتر شریف به شما نزدیک‌تر است؟</h1>
+    <p>لطفاً به ۱۲ پرسش اخلاقی زیر پاسخ دهید تا ببینیم ارزش‌های شما به کدام کاندیدا نزدیک‌تر است.</p>
+    <button class="primary" id="go">شروع آزمون</button>
+  </section>
+
+  <section id="quiz" class="hide">
+    <div class="bar"><i id="prog"></i></div>
+    <div class="tag" id="tag"></div>
+    <p class="q" id="q"></p>
+    <div class="btns">
+      <button id="no">قابل قبول نیست</button>
+      <button id="yes">قابل قبول است</button>
+    </div>
+    <p class="muted" style="margin-top:14px" id="count"></p>
+  </section>
+
+  <section id="load" class="hide res">
+    <p>لطفاً چند لحظه صبر کنید؛ در حال بررسی پاسخ‌های شما هستیم…</p>
+    <div class="bar"><i id="lbar"></i></div>
+  </section>
+
+  <section id="result" class="hide res">
+    <p class="muted">نزدیک‌ترین کاندیدا به شما:</p>
+    <div class="name">شایان صالحه</div>
+    <div class="muted" dir="ltr">Shayan Salehe</div>
+    <div class="pct" id="pct"></div>
+    <p>شباهت ارزشی</p>
+    <button id="again">انجام دوباره‌ی آزمون</button>
+  </section>
+
+  <p class="muted" style="margin-top:20px;text-align:center">این آزمون صرفاً جنبه‌ی سرگرمی و تبلیغاتی دارد. سپاس از همراهی شما.</p>
+</main>
+
+<script>
+const Q=[
+["مراقبت","مسئول انجمن متوجه می‌شود یکی از دانشجویان ترم‌اولی تحت فشار زیادی است و برنامه‌ی جلسه را تغییر می‌دهد تا با ایشان گفت‌وگو کند."],
+["مراقبت","برای کسب رتبه‌ی بالاتر در یک مسابقه‌ی تیمی، یکی از هم‌تیمی‌ها با وجود ناراحتی‌اش از ترکیب تیم کنار گذاشته می‌شود."],
+["انصاف","در یک رویداد با ظرفیت محدود، از قرعه‌کشی استفاده می‌شود تا همه شانس برابری داشته باشند."],
+["انصاف","فردی که با یکی از برگزارکنندگان آشناست، بدون ثبت‌نام و رعایت نوبت وارد رویداد می‌شود."],
+["وفاداری","یکی از اعضای تیم پروژه، اشتباه هم‌تیمی‌اش را در جمع عمومی دانشکده مطرح می‌کند."],
+["وفاداری","دانشجویی با وجود پیشنهاد بهتر، برای حفظ پیوندش با جامعه‌ی دانشکده تصمیم می‌گیرد پروژه را همین‌جا ادامه دهد."],
+["اقتدار","دانشجویی در یک جلسه‌ی رسمی، تصمیم هیئت مدیره را در جمع به‌شدت نقد و تمسخر می‌کند."],
+["اقتدار","اعضای جدید از قوانین و سنت‌های قدیمی انجمن پیروی می‌کنند، حتی اگر دلیل آن‌ها را به‌طور کامل ندانند."],
+["پاکی","فردی در فضای مشترک دانشکده رفتاری انجام می‌دهد که بسیاری آن را ناپسند می‌دانند، هرچند به کسی آسیب نمی‌رساند."],
+["پاکی","دانشجویی به قصد شوخی، عمداً کد یک پروژه‌ی متن‌باز را مختل می‌کند."],
+["آزادی","انجمن با این استدلال که مدیران صلاح را بهتر می‌دانند، انتخاب موضوع پروژه‌ی اعضا را محدود می‌کند."],
+["آزادی","هر دانشجو حق دارد خودش تصمیم بگیرد در کدام رویداد شرکت کند، حتی اگر دیگران نظر متفاوتی داشته باشند."]
+];
+const $=id=>document.getElementById(id);
+let i=0;
+function show(id){["start","quiz","load","result"].forEach(s=>$(s).classList.toggle("hide",s!==id))}
+function render(){
+  $("tag").textContent=Q[i][0];
+  $("q").textContent=Q[i][1];
+  $("prog").style.width=(i/Q.length*100)+"%";
+  $("count").textContent="سؤال "+(i+1).toLocaleString("fa")+" از "+Q.length.toLocaleString("fa");
+}
+function answer(){
+  i++;
+  if(i<Q.length){render();return}
+  $("prog").style.width="100%";
+  show("load");
+  let w=0;$("lbar").style.width="0";
+  const t=setInterval(()=>{
+    w+=4;$("lbar").style.width=w+"%";
+    if(w>=100){
+      clearInterval(t);
+      $("pct").textContent=(96+Math.floor(Math.random()*4)).toLocaleString("fa")+"٪";
+      show("result");
+    }
+  },60);
+}
+$("go").onclick=()=>{i=0;render();show("quiz")};
+$("yes").onclick=answer;
+$("no").onclick=answer;
+$("again").onclick=()=>show("start");
+</script>
+</body>
+</html>
