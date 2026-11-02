@@ -16,39 +16,47 @@ p{margin:0 0 16px}
 .muted{color:var(--muted);font-size:.85rem}
 .bar{height:6px;background:var(--line);border-radius:3px;margin-bottom:18px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
-.tag{font-size:.8rem;color:var(--accent);margin-bottom:4px}
-.q{font-size:1.1rem;min-height:110px}
+.q{font-size:1.05rem;min-height:90px;margin-bottom:20px;display:flex;align-items:center}
 .btns{display:flex;gap:10px}
-button{flex:1;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);cursor:pointer}
-button:hover{border-color:var(--accent)}
+.scale-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;width:100%}
+@media (min-width:480px){.scale-grid{grid-template-columns:repeat(10,1fr);gap:6px}}
+button{font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);cursor:pointer;transition:all .15s ease}
+button:hover{border-color:var(--accent);color:var(--accent)}
 button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.primary:hover{opacity:.9;color:#fff}
+.scale-btn{padding:10px 0;font-weight:700}
+.slider-wrap{display:flex;flex-direction:column;gap:14px;width:100%}
+.slider-labels{display:flex;justify-content:space-between;font-weight:700;font-size:.95rem;color:var(--accent)}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;height:6px}
 .res{text-align:center}
 .name{font-size:1.8rem;font-weight:700;margin:6px 0}
 .pct{font-size:3rem;font-weight:700;color:var(--accent)}
+.runners-up{margin:24px 0;text-align:right;border-top:1px solid var(--line);padding-top:16px}
+.runner{margin-bottom:12px}
+.runner-info{display:flex;justify-content:space-between;font-size:.9rem;margin-bottom:4px}
+.runner-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.runner-bar i{display:block;height:100%;background:var(--accent);opacity:.75}
+.runner.low .runner-bar i{background:var(--muted);opacity:.4}
 .hide{display:none}
 </style>
 </head>
 <body>
 <main class="card">
   <section id="start">
-    <h1>کدام کاندیدای انجمن علمی دانشکده کامپیوتر شریف به شما نزدیک‌تر است؟</h1>
-    <p>لطفاً به ۱۲ پرسش اخلاقی زیر پاسخ دهید تا ببینیم ارزش‌های شما به کدام کاندیدا نزدیک‌تر است.</p>
-    <button class="primary" id="go">شروع آزمون</button>
+    <h1>کدام کاندیدای انجمن علمی به شما نزدیک‌تر است؟</h1>
+    <p id="intro-text"></p>
+    <button class="primary" style="width:100%" id="go">شروع آزمون</button>
   </section>
 
   <section id="quiz" class="hide">
     <div class="bar"><i id="prog"></i></div>
-    <div class="tag" id="tag"></div>
     <p class="q" id="q"></p>
-    <div class="btns">
-      <button id="no">قابل قبول نیست</button>
-      <button id="yes">قابل قبول است</button>
-    </div>
-    <p class="muted" style="margin-top:14px" id="count"></p>
+    <div id="btn-container"></div>
+    <p class="muted" style="margin-top:16px" id="count"></p>
   </section>
 
   <section id="load" class="hide res">
-    <p>لطفاً چند لحظه صبر کنید؛ در حال بررسی پاسخ‌های شما هستیم…</p>
+    <p>در حال تطبیق پاسخ‌ها با داده‌های مستند دانشکده…</p>
     <div class="bar"><i id="lbar"></i></div>
   </section>
 
@@ -57,54 +65,243 @@ button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
     <div class="name">شایان صالحه</div>
     <div class="muted" dir="ltr">Shayan Salehe</div>
     <div class="pct" id="pct"></div>
-    <p>شباهت ارزشی</p>
-    <button id="again">انجام دوباره‌ی آزمون</button>
+    <p>شباهت دیدگاهی</p>
+
+    <div class="runners-up">
+      <p class="muted" style="margin-bottom:12px">سایر کاندیداهای نزدیک به شما:</p>
+      <div id="runners-list"></div>
+    </div>
+
+    <button id="again" style="width:100%">انجام دوباره‌ی آزمون</button>
   </section>
 </main>
 
 <script>
-const Q=[
-["مراقبت","مسئول انجمن متوجه می‌شود یکی از دانشجویان ترم‌اولی تحت فشار زیادی است و برنامه‌ی جلسه را تغییر می‌دهد تا با ایشان گفت‌وگو کند."],
-["مراقبت","برای کسب رتبه‌ی بالاتر در یک مسابقه‌ی تیمی، یکی از هم‌تیمی‌ها با وجود ناراحتی‌اش از ترکیب تیم کنار گذاشته می‌شود."],
-["انصاف","در یک رویداد با ظرفیت محدود، از قرعه‌کشی استفاده می‌شود تا همه شانس برابری داشته باشند."],
-["انصاف","فردی که با یکی از برگزارکنندگان آشناست، بدون ثبت‌نام و رعایت نوبت وارد رویداد می‌شود."],
-["وفاداری","یکی از اعضای تیم پروژه، اشتباه هم‌تیمی‌اش را در جمع عمومی دانشکده مطرح می‌کند."],
-["وفاداری","دانشجویی با وجود پیشنهاد بهتر، برای حفظ پیوندش با جامعه‌ی دانشکده تصمیم می‌گیرد پروژه را همین‌جا ادامه دهد."],
-["اقتدار","دانشجویی در یک جلسه‌ی رسمی، تصمیم هیئت مدیره را در جمع به‌شدت نقد و تمسخر می‌کند."],
-["اقتدار","اعضای جدید از قوانین و سنت‌های قدیمی انجمن پیروی می‌کنند، حتی اگر دلیل آن‌ها را به‌طور کامل ندانند."],
-["پاکی","فردی در فضای مشترک دانشکده رفتاری انجام می‌دهد که بسیاری آن را ناپسند می‌دانند، هرچند به کسی آسیب نمی‌رساند."],
-["پاکی","دانشجویی به قصد شوخی، عمداً کد یک پروژه‌ی متن‌باز را مختل می‌کند."],
-["آزادی","انجمن با این استدلال که مدیران صلاح را بهتر می‌دانند، انتخاب موضوع پروژه‌ی اعضا را محدود می‌کند."],
-["آزادی","هر دانشجو حق دارد خودش تصمیم بگیرد در کدام رویداد شرکت کند، حتی اگر دیگران نظر متفاوتی داشته باشند."]
+const Q = [
+  {
+    text: "اگر هم‌تیمی شما بعد از ۳۰ ساعت کار اجرایی بی‌وقفه در سالن از حال رفته باشد، وظیفه اخلاقی شماست که سهم گوشت او را قبل از سرد شدن بخورید تا اسراف نشود.",
+    type: "binary"
+  },
+  {
+    text: "انجمن در دوره جدید تمام ایونت‌های دانشکده را کنسل می‌کند تا به استف وسس هر شب گوشت بدهد.",
+    type: "binary"
+  },
+  {
+    text: "نظرت درباره دانیال جیشی از ۱ تا ۱۰ چنده؟",
+    type: "scale10"
+  },
+  {
+    text: "سهیل سیاح با پروپاگاندای چایی در انتخابات به شورای مرکزی می‌رود ولی به وعده‌های خود عمل نمی‌کند.",
+    type: "binary"
+  },
+  {
+    text: "کدام یک؟",
+    type: "choice",
+    options: ["اتاق بایت", "اتاق رایانش"]
+  },
+  {
+    text: "اگر جنگ شد انجمن باید به هر روشی که شده رویدادهایی آنلاین برگزار کند که فضای دانشگاه پویا بماند.",
+    type: "binary"
+  },
+  {
+    text: "اسسی اتاق صنفی در آکواریوم را به زور تصاحب کرده و به بایت می‌دهد و تجهیزات ضبط پادکست برای بایت‌کست می‌خرد.",
+    type: "binary"
+  },
+  {
+    text: "تمام رویدادهای مربوط که در دانشگاه‌های دیگر برگزار می‌شود به اسم شریف برگزار شده و آن‌ها را می‌بلعد تا قدرت شریف بیش از پیش تثبیت شود.",
+    type: "binary"
+  },
+  {
+    text: "از نظر شما جو رویدادهای دانشکده باید به چه شکلی باشد؟",
+    type: "slider",
+    minLabel: "علمی",
+    maxLabel: "فان"
+  }
 ];
-const $=id=>document.getElementById(id);
-let i=0;
-function show(id){["start","quiz","load","result"].forEach(s=>$(s).classList.toggle("hide",s!==id))}
-function render(){
-  $("tag").textContent=Q[i][0];
-  $("q").textContent=Q[i][1];
-  $("prog").style.width=(i/Q.length*100)+"%";
-  $("count").textContent="سؤال "+(i+1).toLocaleString("fa")+" از "+Q.length.toLocaleString("fa");
+
+const coalitionCandidates = [
+  "امیرحسین میرزائی",
+  "حسین مرادی",
+  "آرش اکبری",
+  "امیرحسین مهبودی"
+];
+
+const $ = id => document.getElementById(id);
+let i = 0;
+let currentQuestions = [];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let idx = a.length - 1; idx > 0; idx--) {
+    const r = Math.floor(Math.random() * (idx + 1));
+    [a[idx], a[r]] = [a[r], a[idx]];
+  }
+  return a;
 }
+
+function formatPct(num) {
+  return num.toLocaleString("fa", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "٪";
+}
+
+$("intro-text").textContent = "الگوریتم‌های پیشرفته‌ی هوش مصنوعی ما (آموزش‌دیده روی مصرف پروتئین استف)، با تحلیل دقیق پاسخ‌های شما به " + Q.length.toLocaleString("fa") + " سؤال حیاتی زیر مشخص می‌کنند به کدام کاندیدا نزدیک‌ترید. کاملاً بدون سوگیری و با تایید مستند دیتاست‌های دانشکده!";
+
+function show(id){
+  ["start","quiz","load","result"].forEach(s => $(s).classList.toggle("hide", s !== id));
+}
+
+function render(){
+  const cur = currentQuestions[i];
+  $("q").textContent = cur.text;
+  $("prog").style.width = (i / currentQuestions.length * 100) + "%";
+  $("count").textContent = "سؤال " + (i + 1).toLocaleString("fa") + " از " + currentQuestions.length.toLocaleString("fa");
+
+  const container = $("btn-container");
+  container.innerHTML = "";
+
+  if (cur.type === "scale10") {
+    const grid = document.createElement("div");
+    grid.className = "scale-grid";
+    for (let n = 1; n <= 10; n++) {
+      const b = document.createElement("button");
+      b.className = "scale-btn";
+      b.textContent = n.toLocaleString("fa");
+      b.onclick = answer;
+      grid.appendChild(b);
+    }
+    container.appendChild(grid);
+  } else if (cur.type === "choice") {
+    const btns = document.createElement("div");
+    btns.className = "btns";
+    cur.options.forEach((opt, idx) => {
+      const b = document.createElement("button");
+      b.textContent = opt;
+      b.style.flex = "1";
+      if (idx === 0) b.className = "primary";
+      b.onclick = answer;
+      btns.appendChild(b);
+    });
+    container.appendChild(btns);
+  } else if (cur.type === "slider") {
+    const wrap = document.createElement("div");
+    wrap.className = "slider-wrap";
+
+    const labels = document.createElement("div");
+    labels.className = "slider-labels";
+    const rightSpan = document.createElement("span");
+    rightSpan.textContent = cur.minLabel;
+    const leftSpan = document.createElement("span");
+    leftSpan.textContent = cur.maxLabel;
+    labels.appendChild(rightSpan);
+    labels.appendChild(leftSpan);
+
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = "1";
+    input.max = "100";
+    input.value = "50";
+
+    const submitBtn = document.createElement("button");
+    submitBtn.className = "primary";
+    submitBtn.textContent = "ثبت و ادامه";
+    submitBtn.onclick = answer;
+
+    wrap.appendChild(labels);
+    wrap.appendChild(input);
+    wrap.appendChild(submitBtn);
+    container.appendChild(wrap);
+  } else {
+    const btns = document.createElement("div");
+    btns.className = "btns";
+
+    const noBtn = document.createElement("button");
+    noBtn.textContent = "مخالفم";
+    noBtn.style.flex = "1";
+    noBtn.onclick = answer;
+
+    const yesBtn = document.createElement("button");
+    yesBtn.textContent = "موافقم";
+    yesBtn.className = "primary";
+    yesBtn.style.flex = "1";
+    yesBtn.onclick = answer;
+
+    btns.appendChild(noBtn);
+    btns.appendChild(yesBtn);
+    container.appendChild(btns);
+  }
+}
+
+function renderRunnersUp(){
+  const list = $("runners-list");
+  list.innerHTML = "";
+  const scores = [
+    91 + Math.random() * 3.5,
+    87 + Math.random() * 3.5,
+    83 + Math.random() * 3.5,
+    79 + Math.random() * 3.5
+  ];
+
+  const shuffled = shuffle(coalitionCandidates);
+
+  shuffled.forEach((name, idx) => {
+    const sc = scores[idx];
+    const item = document.createElement("div");
+    item.className = "runner";
+    item.innerHTML = `
+      <div class="runner-info">
+        <span>${name}</span>
+        <span class="muted">${formatPct(sc)}</span>
+      </div>
+      <div class="runner-bar"><i style="width:${sc}%"></i></div>
+    `;
+    list.appendChild(item);
+  });
+
+  const lowScore = 0.4 + Math.random() * 1.4;
+  const lowItem = document.createElement("div");
+  lowItem.className = "runner low";
+  lowItem.style.marginTop = "16px";
+  lowItem.innerHTML = `
+    <div class="runner-info">
+      <span class="muted">سایر کاندیداها (خارج از ائتلاف)</span>
+      <span class="muted">${formatPct(lowScore)}</span>
+    </div>
+    <div class="runner-bar"><i style="width:${lowScore}%"></i></div>
+  `;
+  list.appendChild(lowItem);
+}
+
 function answer(){
   i++;
-  if(i<Q.length){render();return}
-  $("prog").style.width="100%";
+  if (i < currentQuestions.length) {
+    render();
+    return;
+  }
+  $("prog").style.width = "100%";
   show("load");
-  let w=0;$("lbar").style.width="0";
-  const t=setInterval(()=>{
-    w+=4;$("lbar").style.width=w+"%";
-    if(w>=100){
+  let w = 0;
+  $("lbar").style.width = "0";
+  const t = setInterval(() => {
+    w += 5;
+    $("lbar").style.width = w + "%";
+    if (w >= 100) {
       clearInterval(t);
-      $("pct").textContent=(96+Math.floor(Math.random()*4)).toLocaleString("fa")+"٪";
+      const topScore = 96.1 + Math.random() * 3.7;
+      $("pct").textContent = formatPct(topScore);
+      renderRunnersUp();
       show("result");
     }
-  },60);
+  }, 50);
 }
-$("go").onclick=()=>{i=0;render();show("quiz")};
-$("yes").onclick=answer;
-$("no").onclick=answer;
-$("again").onclick=()=>show("start");
+
+function startQuiz(){
+  i = 0;
+  currentQuestions = shuffle(Q);
+  render();
+  show("quiz");
+}
+
+$("go").onclick = startQuiz;
+$("again").onclick = () => show("start");
 </script>
 </body>
 </html>
