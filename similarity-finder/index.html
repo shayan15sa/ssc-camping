@@ -32,11 +32,14 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;height:6p
 .name{font-size:1.8rem;font-weight:700;margin:6px 0}
 .pct{font-size:3rem;font-weight:700;color:var(--accent)}
 .runners-up{margin:24px 0;text-align:right;border-top:1px solid var(--line);padding-top:16px}
-.runner{margin-bottom:12px}
-.runner-info{display:flex;justify-content:space-between;font-size:.9rem;margin-bottom:4px}
+.runner{margin-bottom:14px}
+.runner-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:.9rem}
+.runner-head .rname{flex:1}
 .runner-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
 .runner-bar i{display:block;height:100%;background:var(--accent);opacity:.75}
 .runner.low .runner-bar i{background:var(--muted);opacity:.4}
+.avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--line);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0;border:1px solid var(--line)}
+.avatar.lg{width:104px;height:104px;font-size:2.2rem;margin:0 auto 8px;border:3px solid var(--accent)}
 .hide{display:none}
 </style>
 </head>
@@ -62,6 +65,7 @@ input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;height:6p
 
   <section id="result" class="hide res">
     <p class="muted">نزدیک‌ترین کاندیدا به شما:</p>
+    <div id="win-avatar"></div>
     <div class="name">شایان صالحه</div>
     <div class="muted" dir="ltr">Shayan Salehe</div>
     <div class="pct" id="pct"></div>
@@ -119,11 +123,16 @@ const Q = [
   }
 ];
 
+/* ===== عکس‌ها =====
+   در فیلد photo آدرس عکس (لینک یا مسیر فایل کنار همین صفحه، مثلاً "img/shayan.jpg") را بگذارید.
+   اگر خالی باشد یا لود نشود، حروف اول اسم نمایش داده می‌شود. */
+const winner = { name: "شایان صالحه", photo: "img/shayan.jpg" };
+
 const coalitionCandidates = [
-  "امیرحسین میرزائی",
-  "حسین مرادی",
-  "آرش اکبری",
-  "امیرحسین مهبودی"
+  { name: "امیرحسین میرزائی", photo: "img/radical.jpg" },
+  { name: "حسین مرادی",       photo: "img/hossein.jpg" },
+  { name: "آرش اکبری",        photo: "img/arash.jpg" },
+  { name: "امیرحسین مهبودی",  photo: "img/mbd.jpg" }
 ];
 
 const $ = id => document.getElementById(id);
@@ -141,6 +150,28 @@ function shuffle(arr) {
 
 function formatPct(num) {
   return num.toLocaleString("fa", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "٪";
+}
+
+function initials(name) {
+  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("\u200c");
+}
+
+function makeAvatar(person, large) {
+  const cls = "avatar" + (large ? " lg" : "");
+  const fallback = () => {
+    const d = document.createElement("div");
+    d.className = cls;
+    d.textContent = initials(person.name);
+    return d;
+  };
+  if (!person.photo) return fallback();
+  const img = document.createElement("img");
+  img.className = cls;
+  img.src = person.photo;
+  img.alt = person.name;
+  img.loading = "lazy";
+  img.onerror = () => img.replaceWith(fallback());
+  return img;
 }
 
 $("intro-text").textContent = "الگوریتم‌های پیشرفته‌ی هوش مصنوعی ما (آموزش‌دیده روی مصرف پروتئین استف)، با تحلیل دقیق پاسخ‌های شما به " + Q.length.toLocaleString("fa") + " سؤال حیاتی زیر مشخص می‌کنند به کدام کاندیدا نزدیک‌ترید. کاملاً بدون سوگیری و با تایید مستند دیتاست‌های دانشکده!";
@@ -242,17 +273,28 @@ function renderRunnersUp(){
 
   const shuffled = shuffle(coalitionCandidates);
 
-  shuffled.forEach((name, idx) => {
+  shuffled.forEach((person, idx) => {
     const sc = scores[idx];
     const item = document.createElement("div");
     item.className = "runner";
-    item.innerHTML = `
-      <div class="runner-info">
-        <span>${name}</span>
-        <span class="muted">${formatPct(sc)}</span>
-      </div>
-      <div class="runner-bar"><i style="width:${sc}%"></i></div>
-    `;
+
+    const head = document.createElement("div");
+    head.className = "runner-head";
+    const nameEl = document.createElement("span");
+    nameEl.className = "rname";
+    nameEl.textContent = person.name;
+    const pctEl = document.createElement("span");
+    pctEl.className = "muted";
+    pctEl.textContent = formatPct(sc);
+    head.append(makeAvatar(person, false), nameEl, pctEl);
+
+    const barWrap = document.createElement("div");
+    barWrap.className = "runner-bar";
+    const fill = document.createElement("i");
+    fill.style.width = sc + "%";
+    barWrap.appendChild(fill);
+
+    item.append(head, barWrap);
     list.appendChild(item);
   });
 
@@ -261,8 +303,8 @@ function renderRunnersUp(){
   lowItem.className = "runner low";
   lowItem.style.marginTop = "16px";
   lowItem.innerHTML = `
-    <div class="runner-info">
-      <span class="muted">سایر کاندیداها (خارج از ائتلاف)</span>
+    <div class="runner-head">
+      <span class="rname muted">سایر کاندیداها (خارج از ائتلاف)</span>
       <span class="muted">${formatPct(lowScore)}</span>
     </div>
     <div class="runner-bar"><i style="width:${lowScore}%"></i></div>
@@ -287,6 +329,7 @@ function answer(){
       clearInterval(t);
       const topScore = 96.1 + Math.random() * 3.7;
       $("pct").textContent = formatPct(topScore);
+      $("win-avatar").replaceChildren(makeAvatar(winner, true));
       renderRunnersUp();
       show("result");
     }
